@@ -13,7 +13,7 @@ app.secret_key = "ultra_premium_key_99"
 UPLOAD_FOLDER = 'static/uploads'
 app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
 
-# Vercel-এর Read-only system-এ ইরোর এড়াতে try-except ব্যবহার করা হয়েছে
+# Vercel-এ ফোল্ডার তৈরি করা যায় না, তাই এটি try-except এ রাখা হয়েছে যেন ইরোর না দেয়
 try:
     if not os.path.exists(UPLOAD_FOLDER):
         os.makedirs(UPLOAD_FOLDER, exist_ok=True)
@@ -21,6 +21,7 @@ except:
     pass
 
 # --- MongoDB Setup ---
+# আপনার দেওয়া লিঙ্কটিই রাখা হয়েছে
 MONGO_URI = "mongodb+srv://roxiw19528:roxiw19528@cluster0.vl508y4.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0"
 client = MongoClient(MONGO_URI)
 db = client['movie_v53']
@@ -47,27 +48,28 @@ def get_settings():
             "ad_banner": "", 
             "ad_popunder": "", 
             "ad_social": "",
-            "admin_user": "admin", 
-            "admin_pass": "admin"
+            "admin_user": "admin", # ডিফল্ট ইউজার
+            "admin_pass": "admin"  # ডিফল্ট পাসওয়ার্ড
         }
         settings_col.insert_one(default)
         return default
     return settings
 
-# --- CSS Design (Premium Grid & UI) ---
+# --- CSS Design (Premium Sidebar & Responsive Grid) ---
 BASE_CSS = """
 <style>
     @import url('https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600&display=swap');
     :root { --primary: #e50914; --dark: #080808; --card: #121212; --text: #ffffff; --sidebar: #111; }
     body { background: var(--dark); color: var(--text); font-family: 'Poppins', sans-serif; margin: 0; padding: 0; overflow-x: hidden; }
     
+    /* Rainbow Logo Animation */
     @keyframes rainbow { 0%{color:#ff0000} 15%{color:#ff8800} 30%{color:#ffff00} 45%{color:#00ff00} 60%{color:#00ffff} 75%{color:#0000ff} 90%{color:#8800ff} 100%{color:#ff0000} }
     .logo { font-size: 26px; font-weight: 800; animation: rainbow 4s infinite; text-decoration: none; display: flex; align-items: center; justify-content: center; padding: 15px; }
 
     .notice-bar { padding: 10px; text-align: center; font-size: 14px; font-weight: bold; }
     .container { width: 95%; max-width: 1400px; margin: auto; }
 
-    /* Admin Sidebar (Only for Admin) */
+    /* Sidebar Navigation */
     .sidebar { position: fixed; left: -280px; top: 0; height: 100%; width: 280px; background: var(--sidebar); transition: 0.3s; z-index: 1001; border-right: 1px solid #333; }
     .sidebar.active { left: 0; }
     .sidebar-header { padding: 20px; border-bottom: 1px solid #333; font-weight: bold; color: var(--primary); font-size: 20px; text-align: center; }
@@ -79,17 +81,24 @@ BASE_CSS = """
     
     .menu-trigger { cursor: pointer; font-size: 28px; color: #fff; padding: 10px; position: fixed; top: 40px; left: 15px; z-index: 999; background: var(--primary); border-radius: 5px; width: 45px; height: 45px; display: flex; align-items: center; justify-content: center; }
 
+    /* Movie Grid (Auto Desktop/Mobile) */
     .movie-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); gap: 15px; }
-    .movie-card { background: var(--card); border-radius: 8px; overflow: hidden; text-decoration: none; color: #fff; transition: 0.3s; border: 1px solid #222; }
+    .movie-card { background: var(--card); border-radius: 8px; overflow: hidden; text-decoration: none; color: #fff; transition: 0.3s; border: 1px solid #222; position: relative; }
     .movie-card:hover { transform: translateY(-5px); border-color: var(--primary); }
     .movie-card img { width: 100%; object-fit: cover; }
+    
+    /* Movie Badge Badge Style */
+    .movie-badge { position: absolute; top: 10px; left: 10px; background: var(--primary); color: white; padding: 2px 8px; border-radius: 4px; font-size: 11px; font-weight: bold; z-index: 2; box-shadow: 0 0 5px rgba(0,0,0,0.5); }
+
     .movie-info { padding: 10px; text-align: center; font-size: 14px; }
 
+    /* Slider */
     .slider { display: flex; overflow-x: auto; scroll-snap-type: x mandatory; gap: 10px; padding: 10px 0; scrollbar-width: none; }
     .slider::-webkit-scrollbar { display: none; }
     .slide-item { flex: 0 0 85%; scroll-snap-align: start; position: relative; border-radius: 15px; overflow: hidden; height: 280px; }
     .slide-item img { width: 100%; height: 100%; object-fit: cover; filter: brightness(0.6); }
 
+    /* Admin UI */
     .admin-section { display: none; padding: 20px; }
     .admin-section.active { display: block; }
     .input-group { background: #1a1a1a; padding: 20px; border-radius: 10px; margin-bottom: 20px; border: 1px solid #333; }
@@ -102,14 +111,14 @@ BASE_CSS = """
 </style>
 """
 
-# --- ADMIN SIDEBAR COMPONENT ---
-# ইউজার প্যানেল থেকে হ্যামবার্গার মেনু ট্রিগার (☰) মুছে ফেলার জন্য এটি আলাদা করা হয়েছে
-ADMIN_SIDEBAR_HTML = """
+# --- SIDEBAR COMPONENT ---
+SIDEBAR_HTML = """
 <div class="menu-trigger" onclick="toggleSidebar()">☰</div>
 <div class="overlay" id="overlay" onclick="toggleSidebar()"></div>
 <div class="sidebar" id="sidebar">
-    <div class="sidebar-header">ADMIN MENU</div>
-    <a href="/">🏠 Home Page</a>
+    <div class="sidebar-header">MENU</div>
+    <a href="/">🏠 Home</a>
+    {% if session.admin %}
     <a href="javascript:void(0)" onclick="showSection('add_movie')">➕ Add Movie</a>
     <a href="javascript:void(0)" onclick="showSection('movie_list')">🎬 Manage Movies</a>
     <a href="javascript:void(0)" onclick="showSection('cat_manage')">📂 Categories</a>
@@ -118,6 +127,10 @@ ADMIN_SIDEBAR_HTML = """
     <a href="javascript:void(0)" onclick="showSection('tg_settings')">📢 Telegram Settings</a>
     <a href="javascript:void(0)" onclick="showSection('security')">🔐 Security</a>
     <a href="/logout" style="color:red;">🚪 Logout</a>
+    {% else %}
+    {% for c in all_categories %}<a href="/category/{{c.name}}">📁 {{c.name}}</a>{% endfor %}
+    <a href="/login">🔑 Admin Login</a>
+    {% endif %}
 </div>
 <script>
     function toggleSidebar() {
@@ -137,12 +150,18 @@ ADMIN_SIDEBAR_HTML = """
 HOME_HTML = """
 <!DOCTYPE html>
 <html>
-<head><meta name="viewport" content="width=device-width, initial-scale=1.0"><title>{{ settings.site_name }}</title>""" + BASE_CSS + """</head>
+<head>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{ settings.site_name }}</title>
+    """ + BASE_CSS + """
+</head>
 <body>
     <div class="notice-bar" style="background:{{ settings.notice_bg }}; color:{{ settings.notice_color }};">
         <marquee>{{ settings.notice_text }}</marquee>
     </div>
     
+    """ + SIDEBAR_HTML + """
+
     <header class="container">
         <a href="/" class="logo">
             {% if settings.logo_url %}<img src="{{settings.logo_url}}" width="40" style="margin-right:10px;">{% endif %}
@@ -179,6 +198,7 @@ HOME_HTML = """
             <div class="movie-grid">
                 {% for movie in movie_data[cat] %}
                 <a href="/movie/{{ movie._id }}" class="movie-card">
+                    {% if movie.badge %}<div class="movie-badge">{{ movie.badge }}</div>{% endif %}
                     <img src="{{ movie.thumb }}" style="width:{{settings.thumb_width}}px; height:{{settings.thumb_height}}px; padding:{{settings.thumb_margin}}px">
                     <div class="movie-info"><strong>{{ movie.name }}</strong><br><span style="color:#888;">{{ movie.lang }}</span></div>
                 </a>
@@ -197,14 +217,28 @@ HOME_HTML = """
 DETAIL_HTML = """
 <!DOCTYPE html>
 <html>
-<head><meta name="viewport" content="width=device-width, initial-scale=1.0"><title>{{ movie.name }}</title>""" + BASE_CSS + """</head>
+<head>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{ movie.name }}</title>
+    """ + BASE_CSS + """
+</head>
 <body>
+    """ + SIDEBAR_HTML + """
     <header class="container"><a href="/" class="logo">{{ settings.site_name }}</a></header>
     <div class="container" style="text-align:center; padding-top:20px;">
         <h1>{{ movie.name }}</h1>
         <div class="ads">{{ settings.ad_banner | safe }}</div>
-        <div style="background:#000; padding:15px; border-radius:10px; margin:20px 0; border:1px solid #333;">{{ movie.html_code | safe }}</div>
-        <p>Category: {{ movie.cat }} | Language: {{ movie.lang }}</p>
+        
+        <!-- মুভি থাম্বনেল প্রদর্শন -->
+        <div style="margin-bottom:20px;">
+            <img src="{{ movie.thumb }}" style="max-width:100%; height:auto; border-radius:10px; border:1px solid #333; max-height:450px; object-fit:cover;">
+        </div>
+
+        <div style="background:#000; padding:15px; border-radius:10px; margin:20px 0; border:1px solid #333;">
+            {{ movie.html_code | safe }}
+        </div>
+        
+        <p>Category: {{ movie.cat }} | Language: {{ movie.lang }} {% if movie.badge %}| Quality: {{ movie.badge }}{% endif %}</p>
         <div class="ads">{{ settings.ad_social | safe }}</div>
     </div>
 </body>
@@ -216,53 +250,73 @@ DETAIL_HTML = """
 ADMIN_HTML = """
 <!DOCTYPE html>
 <html>
-<head><meta name="viewport" content="width=device-width, initial-scale=1.0"><title>Admin Panel</title>""" + BASE_CSS + """</head>
+<head>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Admin Panel</title>
+    """ + BASE_CSS + """
+</head>
 <body style="background:#000;">
-    """ + ADMIN_SIDEBAR_HTML + """
+    """ + SIDEBAR_HTML + """
     <div class="container" style="padding-top:80px;">
         <h1 style="text-align:center; color:red; text-shadow:0 0 10px red;">ADMIN DASHBOARD</h1>
         
+        <!-- Add/Edit Movie -->
         <div id="add_movie" class="admin-section active">
             <div class="input-group">
                 <h3>{% if edit_movie %}Edit Movie{% else %}Add New Movie{% endif %}</h3>
                 <form action="/admin/save-movie" method="POST" enctype="multipart/form-data">
                     <input type="hidden" name="movie_id" value="{{ edit_movie._id if edit_movie else '' }}">
                     <input type="text" name="name" value="{{ edit_movie.name if edit_movie else '' }}" placeholder="Movie Name" required>
+                    
+                    <input type="text" name="badge" value="{{ edit_movie.badge if edit_movie else '' }}" placeholder="Movie Badge (e.g. HD, 4K, Dual Audio)">
+
+                    <label>Thumbnail System:</label>
                     <input type="text" name="thumb_url" value="{{ edit_movie.thumb if edit_movie else '' }}" placeholder="Image URL">
-                    <p style="text-align:center; margin:5px;">OR Upload (MongoDB Base64)</p>
+                    <p style="text-align:center; margin:5px;">OR Upload from Gallery</p>
                     <input type="file" name="thumb_file">
+
                     <select name="cat">
                         <option value="">Select Category</option>
                         {% for c in all_categories %}<option value="{{c.name}}" {% if edit_movie and edit_movie.cat == c.name %}selected{% endif %}>{{c.name}}</option>{% endfor %}
                     </select>
-                    <input type="text" name="lang" value="{{ edit_movie.lang if edit_movie else '' }}" placeholder="Language">
+                    <input type="text" name="lang" value="{{ edit_movie.lang if edit_movie else '' }}" placeholder="Language (e.g. Hindi)">
+                    
+                    <label>Player HTML Code (Live Preview Below):</label>
                     <textarea name="html_code" id="hcode" rows="6" oninput="document.getElementById('html-preview').innerHTML = this.value" placeholder="Paste Embed Code">{{ edit_movie.html_code if edit_movie else '' }}</textarea>
                     <div id="html-preview">Preview will appear here...</div>
+                    
                     <button type="submit" class="btn" style="margin-top:15px;">Save & Post Movie</button>
                 </form>
             </div>
         </div>
 
+        <!-- Movie List -->
         <div id="movie_list" class="admin-section">
             <div class="input-group">
                 <h3>Manage Movies</h3>
                 <form method="GET" action="/admin"><input type="text" name="search" placeholder="Search..."></form>
-                <table width="100%" style="border-collapse:collapse;">
-                    <tr style="background:#222;"><th>Name</th><th>Action</th></tr>
-                    {% for m in movies %}
-                    <tr style="border-bottom:1px solid #333; text-align:center;">
-                        <td>{{m.name}}</td>
-                        <td><a href="/admin?edit_id={{m._id}}" style="color:cyan;">Edit</a> | <a href="/delete/{m._id}" style="color:red;" onclick="return confirm('Delete?')">Delete</a></td>
-                    </tr>
-                    {% endfor %}
-                </table>
+                <div style="overflow-x:auto;">
+                    <table width="100%" style="border-collapse:collapse;">
+                        <tr style="background:#222;"><th>Name</th><th>Action</th></tr>
+                        {% for m in movies %}
+                        <tr style="border-bottom:1px solid #333; text-align:center;">
+                            <td>{{m.name}}</td>
+                            <td><a href="/admin?edit_id={{m._id}}" style="color:cyan;">Edit</a> | <a href="/delete/{{m._id}}" style="color:red;" onclick="return confirm('Delete?')">Delete</a></td>
+                        </tr>
+                        {% endfor %}
+                    </table>
+                </div>
             </div>
         </div>
 
+        <!-- Category Manage -->
         <div id="cat_manage" class="admin-section">
             <div class="input-group">
                 <h3>Manage Categories</h3>
-                <form action="/admin/add-cat" method="POST"><input type="text" name="cat_name" placeholder="New Category" required><button type="submit" class="btn">Add</button></form>
+                <form action="/admin/add-cat" method="POST">
+                    <input type="text" name="cat_name" placeholder="New Category Name" required>
+                    <button type="submit" class="btn">Add Category</button>
+                </form>
                 <table width="100%" style="margin-top:15px;">
                     {% for c in all_categories %}
                     <tr><td>{{c.name}}</td><td><a href="/admin/del-cat/{{c._id}}" style="color:red;">Delete</a></td></tr>
@@ -271,19 +325,23 @@ ADMIN_HTML = """
             </div>
         </div>
 
+        <!-- Site Settings -->
         <div id="site_settings" class="admin-section">
             <form action="/admin/settings" method="POST" class="input-group">
                 <h3>General Settings</h3>
                 Site Name: <input type="text" name="site_name" value="{{ settings.site_name }}">
+                Logo URL: <input type="text" name="logo_url" value="{{ settings.logo_url }}">
                 Notice Text: <input type="text" name="notice_text" value="{{ settings.notice_text }}">
-                Notice BG: <input type="color" name="notice_bg" value="{{ settings.notice_bg }}">
-                Notice Color: <input type="color" name="notice_color" value="{{ settings.notice_color }}">
+                Notice BG: <input type="color" name="notice_bg" value="{{ settings.notice_bg }}" style="height:40px;">
+                Notice Color: <input type="color" name="notice_color" value="{{ settings.notice_color }}" style="height:40px;">
                 Thumb Width: <input type="number" name="thumb_width" value="{{ settings.thumb_width }}">
+                Thumb Height: <input type="number" name="thumb_height" value="{{ settings.thumb_height }}">
                 Post Limit: <input type="number" name="post_limit" value="{{ settings.post_limit }}">
                 <button type="submit" class="btn">Update Site</button>
             </form>
         </div>
 
+        <!-- Ads -->
         <div id="ad_settings" class="admin-section">
             <form action="/admin/settings" method="POST" class="input-group">
                 <h3>Ad Codes</h3>
@@ -294,6 +352,7 @@ ADMIN_HTML = """
             </form>
         </div>
 
+        <!-- Telegram -->
         <div id="tg_settings" class="admin-section">
             <form action="/admin/settings" method="POST" class="input-group">
                 <h3>Telegram Bot</h3>
@@ -303,6 +362,7 @@ ADMIN_HTML = """
             </form>
         </div>
 
+        <!-- Security -->
         <div id="security" class="admin-section">
             <form action="/admin/update-auth" method="POST" class="input-group">
                 <h3>Admin Security</h3>
@@ -311,6 +371,7 @@ ADMIN_HTML = """
                 <button type="submit" class="btn">Update Credentials</button>
             </form>
         </div>
+
     </div>
     {% if edit_movie %}<script>showSection('add_movie');</script>{% endif %}
 </body>
@@ -325,11 +386,13 @@ def home():
     search = request.args.get('search')
     all_cats = list(cat_col.find().sort("name", 1))
     cat_names = [c['name'] for c in all_cats]
+    
     movie_data = {}
     for cat in cat_names:
         query = {"cat": cat}
         if search: query["name"] = {"$regex": search, "$options": "i"}
         movie_data[cat] = list(movies_col.find(query).sort("_id", -1).limit(int(settings['post_limit'])))
+    
     slider_movies = list(movies_col.find().sort("_id", -1).limit(5))
     return render_template_string(HOME_HTML, settings=settings, categories=cat_names, movie_data=movie_data, slider_movies=slider_movies, all_categories=all_cats, is_cat=False)
 
@@ -337,7 +400,8 @@ def home():
 def details(id):
     settings = get_settings()
     movie = movies_col.find_one({"_id": ObjectId(id)})
-    return render_template_string(DETAIL_HTML, movie=movie, settings=settings)
+    all_cats = list(cat_col.find().sort("name", 1))
+    return render_template_string(DETAIL_HTML, movie=movie, settings=settings, all_categories=all_cats)
 
 @app.route('/category/<name>')
 def category_page(name):
@@ -353,7 +417,12 @@ def login():
         if request.form['user'] == s['admin_user'] and request.form['pass'] == s['admin_pass']:
             session['admin'] = True
             return redirect('/admin')
-    return render_template_string("""<body style="background:#000;color:#fff;display:flex;justify-content:center;align-items:center;height:100vh;font-family:sans-serif;"><form method="POST" style="background:#111;padding:40px;border-radius:15px;width:300px;border:1px solid #333;"><h2 style="text-align:center;color:red;">LOGIN</h2><input name="user" placeholder="User" style="width:100%;padding:10px;margin:10px 0;background:#000;color:#fff;border:1px solid #333;"><input name="pass" type="password" placeholder="Pass" style="width:100%;padding:10px;margin:10px 0;background:#000;color:#fff;border:1px solid #333;"><button style="width:100%;padding:10px;background:red;color:#fff;border:none;cursor:pointer;">Login</button></form></body>""")
+    return render_template_string("""<body style="background:#000;color:#fff;display:flex;justify-content:center;align-items:center;height:100vh;font-family:sans-serif;">
+    <form method="POST" style="background:#111;padding:40px;border-radius:10px;width:300px;border:1px solid #333;">
+    <h2 style="text-align:center;color:red;">ADMIN LOGIN</h2>
+    <input type="text" name="user" placeholder="Username" style="width:100%;padding:10px;margin:10px 0;background:#000;color:#fff;border:1px solid #333;">
+    <input type="password" name="pass" placeholder="Password" style="width:100%;padding:10px;margin:10px 0;background:#000;color:#fff;border:1px solid #333;">
+    <button style="width:100%;padding:10px;background:red;color:#fff;border:none;cursor:pointer;font-weight:bold;">Login</button></form></body>""")
 
 @app.route('/logout')
 def logout():
@@ -367,8 +436,11 @@ def admin():
     all_cats = list(cat_col.find().sort("name", 1))
     edit_id = request.args.get('edit_id')
     edit_movie = movies_col.find_one({"_id": ObjectId(edit_id)}) if edit_id else None
-    search = request.args.get('search', '')
-    movies_list = list(movies_col.find({"name": {"$regex": search, "$options": "i"}}).sort("_id", -1))
+    
+    search = request.args.get('search')
+    query = {"name": {"$regex": search, "$options": "i"}} if search else {}
+    movies_list = list(movies_col.find(query).sort("_id", -1))
+    
     return render_template_string(ADMIN_HTML, settings=settings, all_categories=all_cats, movies=movies_list, edit_movie=edit_movie)
 
 @app.route('/admin/save-movie', methods=['POST'])
@@ -376,18 +448,34 @@ def save_movie():
     if not session.get('admin'): return redirect('/login')
     settings = get_settings()
     movie_id = request.form.get('movie_id')
+    
+    # Thumbnail logic
     thumb = request.form.get('thumb_url')
     if 'thumb_file' in request.files:
         file = request.files['thumb_file']
         if file.filename != '':
             encoded_string = base64.b64encode(file.read()).decode('utf-8')
             thumb = f"data:{file.content_type};base64,{encoded_string}"
-    data = {"name": request.form['name'], "thumb": thumb, "lang": request.form['lang'], "cat": request.form['cat'], "html_code": request.form['html_code']}
-    if movie_id: movies_col.update_one({"_id": ObjectId(movie_id)}, {"$set": data})
+        
+    data = {
+        "name": request.form['name'], 
+        "thumb": thumb,
+        "badge": request.form.get('badge', ''), # ব্যাজ সেভ করা হচ্ছে
+        "lang": request.form['lang'], 
+        "cat": request.form['cat'], 
+        "html_code": request.form['html_code']
+    }
+    
+    if movie_id:
+        movies_col.update_one({"_id": ObjectId(movie_id)}, {"$set": data})
     else:
         new_mov = movies_col.insert_one(data)
         if settings['tg_token'] and settings['tg_chat_id']:
-            requests.post(f"https://api.telegram.org/bot{settings['tg_token']}/sendPhoto", data={"chat_id": settings['tg_chat_id'], "photo": thumb, "caption": f"🎬 {data['name']}\n🔗 {request.host_url}movie/{new_mov.inserted_id}", "parse_mode": "Markdown"})
+            url = request.host_url + "movie/" + str(new_mov.inserted_id)
+            msg = f"🎬 *New Movie Posted!*\n\n⭐ *Name:* {data['name']}\n🌍 *Lang:* {data['lang']}\n📂 *Cat:* {data['cat']}\n🔗 [Watch Now]({url})"
+            requests.post(f"https://api.telegram.org/bot{settings['tg_token']}/sendPhoto", 
+                          data={"chat_id": settings['tg_chat_id'], "photo": data['thumb'], "caption": msg, "parse_mode": "Markdown"})
+
     return redirect('/admin')
 
 @app.route('/admin/add-cat', methods=['POST'])
@@ -411,7 +499,11 @@ def update_settings():
 @app.route('/admin/update-auth', methods=['POST'])
 def update_auth():
     if not session.get('admin'): return redirect('/login')
-    settings_col.update_one({}, {"$set": {"admin_user": request.form['admin_user'], "admin_pass": request.form['admin_pass']}})
+    settings_col.update_one({}, {"$set": {
+        "admin_user": request.form['admin_user'],
+        "admin_pass": request.form['admin_pass']
+    }})
+    flash("Security Updated!")
     return redirect('/admin')
 
 @app.route('/delete/<id>')
