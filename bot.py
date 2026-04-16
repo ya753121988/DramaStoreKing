@@ -1,5 +1,6 @@
 import os
 import base64
+import io # ছবি প্রসেসিং এর জন্য যুক্ত করা হয়েছে
 from flask import Flask, render_template_string, request, redirect, session, url_for, flash
 from pymongo import MongoClient
 from bson.objectid import ObjectId
@@ -53,13 +54,38 @@ def get_settings():
         return default
     return settings
 
-# --- CSS Design (Updated for Landscape and No Zoom) ---
+# --- টেলিগ্রাম নোটিফিকেশন ফাংশন (এড ও ইডিট দুই ক্ষেত্রেই কাজ করবে) ---
+def send_tg_notification(movie_id, data, settings, is_edit=False):
+    if not settings.get('tg_token') or not settings.get('tg_chat_id'):
+        return
+
+    movie_url = request.host_url + "movie/" + str(movie_id)
+    title = "🔄 Movie Updated!" if is_edit else "🎬 New Movie Posted!"
+    caption = f"*{title}*\n\n⭐ *Name:* {data['name']}\n🌍 *Lang:* {data['lang']}\n📂 *Cat:* {data['cat']}\n🔗 [Watch Now]({movie_url})"
+    
+    tg_api = f"https://api.telegram.org/bot{settings['tg_token']}/sendPhoto"
+    
+    try:
+        # যদি গ্যালারি থেকে ছবি আপলোড করা হয় (Base64)
+        if data['thumb'].startswith('data:image'):
+            header, encoded = data['thumb'].split(",", 1)
+            image_data = base64.b64decode(encoded)
+            files = {'photo': ('image.jpg', io.BytesIO(image_data), 'image/jpeg')}
+            payload = {"chat_id": settings['tg_chat_id'], "caption": caption, "parse_mode": "Markdown"}
+            requests.post(tg_api, data=payload, files=files)
+        else:
+            # যদি সরাসরি থাম্বনেল লিঙ্ক ব্যবহার করা হয়
+            payload = {"chat_id": settings['tg_chat_id'], "photo": data['thumb'], "caption": caption, "parse_mode": "Markdown"}
+            requests.post(tg_api, data=payload)
+    except Exception as e:
+        print(f"Telegram Notification Error: {e}")
+
+# --- CSS Design (আপনার আগের দেওয়া ডিজাইন) ---
 BASE_CSS = """
 <style>
     @import url('https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600&display=swap');
     :root { --primary: #e50914; --dark: #080808; --card: #121212; --text: #ffffff; --sidebar: #111; }
     
-    /* Disable Zoom & Setup Body */
     body { 
         background: var(--dark); 
         color: var(--text); 
@@ -67,7 +93,7 @@ BASE_CSS = """
         margin: 0; 
         padding: 0; 
         overflow-x: hidden; 
-        touch-action: pan-y; /* Prevent double-tap zoom */
+        touch-action: pan-y;
     }
     
     @keyframes rainbow { 0%{color:#ff0000} 15%{color:#ff8800} 30%{color:#ffff00} 45%{color:#00ff00} 60%{color:#00ffff} 75%{color:#0000ff} 90%{color:#8800ff} 100%{color:#ff0000} }
@@ -76,7 +102,6 @@ BASE_CSS = """
     .notice-bar { padding: 10px; text-align: center; font-size: 14px; font-weight: bold; }
     .container { width: 95%; max-width: 1400px; margin: auto; }
 
-    /* Sidebar Navigation (Menu Trigger Hidden as requested) */
     .sidebar { position: fixed; left: -280px; top: 0; height: 100%; width: 280px; background: var(--sidebar); transition: 0.3s; z-index: 1001; border-right: 1px solid #333; }
     .sidebar.active { left: 0; }
     .sidebar-header { padding: 20px; border-bottom: 1px solid #333; font-weight: bold; color: var(--primary); font-size: 20px; text-align: center; }
@@ -85,15 +110,11 @@ BASE_CSS = """
     
     .overlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.8); z-index: 1000; }
     .overlay.active { display: block; }
-    
-    /* 3-Dot Menu removed as requested. Sidebar only triggers via logic or admin links. */
 
-    /* Movie Grid (Auto Desktop/Mobile) */
     .movie-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 15px; }
     .movie-card { background: var(--card); border-radius: 8px; overflow: hidden; text-decoration: none; color: #fff; transition: 0.3s; border: 1px solid #222; position: relative; }
     .movie-card:hover { transform: translateY(-3px); border-color: var(--primary); }
     
-    /* Landscape Thumbnails (16:9 ratio) */
     .movie-card img { 
         width: 100%; 
         aspect-ratio: 16 / 9; 
@@ -106,13 +127,11 @@ BASE_CSS = """
     .movie-info { padding: 10px; text-align: left; font-size: 14px; }
     .movie-info strong { display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin-bottom: 5px; }
 
-    /* Slider Landscape */
     .slider { display: flex; overflow-x: auto; scroll-snap-type: x mandatory; gap: 10px; padding: 10px 0; scrollbar-width: none; }
     .slider::-webkit-scrollbar { display: none; }
     .slide-item { flex: 0 0 85%; scroll-snap-align: start; position: relative; border-radius: 12px; overflow: hidden; aspect-ratio: 16 / 9; }
     .slide-item img { width: 100%; height: 100%; object-fit: cover; filter: brightness(0.7); }
 
-    /* Admin UI */
     .admin-section { display: none; padding: 20px; }
     .admin-section.active { display: block; }
     .input-group { background: #1a1a1a; padding: 20px; border-radius: 10px; margin-bottom: 20px; border: 1px solid #333; }
@@ -124,12 +143,10 @@ BASE_CSS = """
     @media (max-width: 600px) { 
         .movie-grid { grid-template-columns: repeat(1, 1fr); } 
         .slide-item { flex: 0 0 100%; } 
-        .movie-card img { aspect-ratio: 16 / 9; }
     }
 </style>
 """
 
-# --- SIDEBAR COMPONENT (Trigger Removed) ---
 SIDEBAR_HTML = """
 <div class="overlay" id="overlay" onclick="toggleSidebar()"></div>
 <div class="sidebar" id="sidebar">
@@ -161,8 +178,6 @@ SIDEBAR_HTML = """
     }
 </script>
 """
-
-# --- USER TEMPLATES (Meta tag updated for No Zoom) ---
 
 HOME_HTML = """
 <!DOCTYPE html>
@@ -265,8 +280,6 @@ DETAIL_HTML = """
 </body>
 </html>
 """
-
-# --- ADMIN TEMPLATE ---
 
 ADMIN_HTML = """
 <!DOCTYPE html>
@@ -469,15 +482,16 @@ def save_movie():
         "cat": request.form['cat'], 
         "html_code": request.form['html_code']
     }
+    
     if movie_id:
+        # এডিট করার সময় নোটিফিকেশন যাবে
         movies_col.update_one({"_id": ObjectId(movie_id)}, {"$set": data})
+        send_tg_notification(movie_id, data, settings, is_edit=True)
     else:
+        # নতুন মুভি সেভ করার সময় নোটিফিকেশন যাবে
         new_mov = movies_col.insert_one(data)
-        if settings['tg_token'] and settings['tg_chat_id']:
-            url = request.host_url + "movie/" + str(new_mov.inserted_id)
-            msg = f"🎬 *New Movie Posted!*\n\n⭐ *Name:* {data['name']}\n🌍 *Lang:* {data['lang']}\n📂 *Cat:* {data['cat']}\n🔗 [Watch Now]({url})"
-            requests.post(f"https://api.telegram.org/bot{settings['tg_token']}/sendPhoto", 
-                          data={"chat_id": settings['tg_chat_id'], "photo": data['thumb'], "caption": msg, "parse_mode": "Markdown"})
+        send_tg_notification(new_mov.inserted_id, data, settings, is_edit=False)
+        
     return redirect('/admin')
 
 @app.route('/admin/add-cat', methods=['POST'])
