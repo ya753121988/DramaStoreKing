@@ -9,7 +9,7 @@ app.secret_key = "ultra_premium_key_99"
 
 # --- MongoDB Setup ---
 # এখানে আপনার MongoDB URL বসান
-MONGO_URI = "mongodb+srv://admin:admin@cluster0.mongodb.net/movie_db?retryWrites=true&w=majority"
+MONGO_URI = "mongodb+srv://roxiw19528:roxiw19528@cluster0.vl508y4.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0"
 client = MongoClient(MONGO_URI)
 db = client['movie_v3']
 movies_col = db['movies']
