@@ -17,8 +17,8 @@ os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 # আপনার দেওয়া লিঙ্কটিই রাখা হয়েছে
 MONGO_URI = "mongodb+srv://roxiw19528:roxiw19528@cluster0.vl508y4.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0"
 client = MongoClient(MONGO_URI)
-db = client['movie_v3']
-movies_col = db['movies']
+db = client['movie_v53']
+movies_col = db['movie']
 settings_col = db['settings']
 cat_col = db['categories']
 
