@@ -4,6 +4,7 @@ from flask import Flask, render_template_string, request, redirect, session, url
 from pymongo import MongoClient
 from bson.objectid import ObjectId
 import requests
+import io
 from werkzeug.utils import secure_filename
 
 app = Flask(__name__)
@@ -462,11 +463,13 @@ def save_movie():
     settings = get_settings()
     movie_id = request.form.get('movie_id')
     thumb = request.form.get('thumb_url')
+    
     if 'thumb_file' in request.files:
         file = request.files['thumb_file']
         if file.filename != '':
             encoded_string = base64.b64encode(file.read()).decode('utf-8')
             thumb = f"data:{file.content_type};base64,{encoded_string}"
+            
     data = {
         "name": request.form['name'], 
         "thumb": thumb,
@@ -475,6 +478,7 @@ def save_movie():
         "cat": request.form['cat'], 
         "html_code": request.form['html_code']
     }
+    
     if movie_id:
         movies_col.update_one({"_id": ObjectId(movie_id)}, {"$set": data})
     else:
@@ -482,13 +486,27 @@ def save_movie():
         if settings['tg_token'] and settings['tg_chat_id']:
             try:
                 url = request.host_url + "movie/" + str(new_mov.inserted_id)
-                msg = f"🎬 <b>New Movie Posted!</b>\\n\\n⭐ <b>Name:</b> {data['name']}\\n🌍 <b>Lang:</b> {data['lang']}\\n📂 <b>Cat:</b> {data['cat']}\\n🔗 <a href='{url}'>Watch Now</a>"
+                msg = f"🎬 <b>New Movie Posted!</b>\n\n⭐ <b>Name:</b> {data['name']}\n🌍 <b>Lang:</b> {data['lang']}\n📂 <b>Cat:</b> {data['cat']}\n🔗 <a href='{url}'>Watch Now</a>"
+                
+                tg_photo_url = f"https://api.telegram.org/bot{settings['tg_token']}/sendPhoto"
+                tg_msg_url = f"https://api.telegram.org/bot{settings['tg_token']}/sendMessage"
+
                 if data['thumb'].startswith('http'):
-                    requests.post(f"https://api.telegram.org/bot{settings['tg_token']}/sendPhoto", 
-                                  data={"chat_id": settings['tg_chat_id'], "photo": data['thumb'], "caption": msg, "parse_mode": "HTML"})
+                    # URL ভিত্তিক ইমেজ হলে সরাসরি পাঠানো
+                    requests.post(tg_photo_url, data={"chat_id": settings['tg_chat_id'], "photo": data['thumb'], "caption": msg, "parse_mode": "HTML"})
+                elif data['thumb'].startswith('data:image'):
+                    # আপলোড করা Base64 ইমেজ হলে ফাইল হিসেবে পাঠানো
+                    try:
+                        base64_str = data['thumb'].split(",")[1]
+                        img_data = base64.b64decode(base64_str)
+                        img_file = io.BytesIO(img_data)
+                        img_file.name = "thumb.jpg"
+                        requests.post(tg_photo_url, data={"chat_id": settings['tg_chat_id'], "caption": msg, "parse_mode": "HTML"}, files={"photo": img_file})
+                    except:
+                        requests.post(tg_msg_url, data={"chat_id": settings['tg_chat_id'], "text": msg, "parse_mode": "HTML"})
                 else:
-                    requests.post(f"https://api.telegram.org/bot{settings['tg_token']}/sendMessage", 
-                                  data={"chat_id": settings['tg_chat_id'], "text": msg, "parse_mode": "HTML"})
+                    # ছবি না থাকলে শুধু মেসেজ
+                    requests.post(tg_msg_url, data={"chat_id": settings['tg_chat_id'], "text": msg, "parse_mode": "HTML"})
             except:
                 pass
 
