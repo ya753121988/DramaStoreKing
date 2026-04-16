@@ -13,7 +13,6 @@ app.secret_key = "ultra_premium_key_99"
 UPLOAD_FOLDER = 'static/uploads'
 app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
 
-# Vercel-এ ফোল্ডার তৈরি করা যায় না, তাই এটি try-except এ রাখা হয়েছে যেন ইরোর না দেয়
 try:
     if not os.path.exists(UPLOAD_FOLDER):
         os.makedirs(UPLOAD_FOLDER, exist_ok=True)
@@ -21,7 +20,6 @@ except:
     pass
 
 # --- MongoDB Setup ---
-# আপনার দেওয়া লিঙ্কটিই রাখা হয়েছে
 MONGO_URI = "mongodb+srv://roxiw19528:roxiw19528@cluster0.vl508y4.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0"
 client = MongoClient(MONGO_URI)
 db = client['movie_v53']
@@ -39,37 +37,46 @@ def get_settings():
             "notice_text": "Welcome to Premium Movie Hub",
             "notice_bg": "#ff0000", 
             "notice_color": "#ffffff", 
-            "thumb_width": "280", 
-            "thumb_height": "160",
-            "thumb_margin": "10", 
+            "thumb_width": "100%", 
+            "thumb_height": "auto",
+            "thumb_margin": "0", 
             "tg_token": "", 
             "tg_chat_id": "", 
             "post_limit": 5, 
             "ad_banner": "", 
             "ad_popunder": "", 
             "ad_social": "",
-            "admin_user": "admin", # ডিফল্ট ইউজার
-            "admin_pass": "admin"  # ডিফল্ট পাসওয়ার্ড
+            "admin_user": "admin", 
+            "admin_pass": "admin"  
         }
         settings_col.insert_one(default)
         return default
     return settings
 
-# --- CSS Design (Premium Sidebar & Responsive Grid) ---
+# --- CSS Design (Updated for Landscape and No Zoom) ---
 BASE_CSS = """
 <style>
     @import url('https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600&display=swap');
     :root { --primary: #e50914; --dark: #080808; --card: #121212; --text: #ffffff; --sidebar: #111; }
-    body { background: var(--dark); color: var(--text); font-family: 'Poppins', sans-serif; margin: 0; padding: 0; overflow-x: hidden; }
     
-    /* Rainbow Logo Animation */
+    /* Disable Zoom & Setup Body */
+    body { 
+        background: var(--dark); 
+        color: var(--text); 
+        font-family: 'Poppins', sans-serif; 
+        margin: 0; 
+        padding: 0; 
+        overflow-x: hidden; 
+        touch-action: pan-y; /* Prevent double-tap zoom */
+    }
+    
     @keyframes rainbow { 0%{color:#ff0000} 15%{color:#ff8800} 30%{color:#ffff00} 45%{color:#00ff00} 60%{color:#00ffff} 75%{color:#0000ff} 90%{color:#8800ff} 100%{color:#ff0000} }
     .logo { font-size: 26px; font-weight: 800; animation: rainbow 4s infinite; text-decoration: none; display: flex; align-items: center; justify-content: center; padding: 15px; }
 
     .notice-bar { padding: 10px; text-align: center; font-size: 14px; font-weight: bold; }
     .container { width: 95%; max-width: 1400px; margin: auto; }
 
-    /* Sidebar Navigation */
+    /* Sidebar Navigation (Menu Trigger Hidden as requested) */
     .sidebar { position: fixed; left: -280px; top: 0; height: 100%; width: 280px; background: var(--sidebar); transition: 0.3s; z-index: 1001; border-right: 1px solid #333; }
     .sidebar.active { left: 0; }
     .sidebar-header { padding: 20px; border-bottom: 1px solid #333; font-weight: bold; color: var(--primary); font-size: 20px; text-align: center; }
@@ -79,24 +86,31 @@ BASE_CSS = """
     .overlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.8); z-index: 1000; }
     .overlay.active { display: block; }
     
-    .menu-trigger { cursor: pointer; font-size: 28px; color: #fff; padding: 10px; position: fixed; top: 40px; left: 15px; z-index: 999; background: var(--primary); border-radius: 5px; width: 45px; height: 45px; display: flex; align-items: center; justify-content: center; }
+    /* 3-Dot Menu removed as requested. Sidebar only triggers via logic or admin links. */
 
     /* Movie Grid (Auto Desktop/Mobile) */
-    .movie-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); gap: 15px; }
+    .movie-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 15px; }
     .movie-card { background: var(--card); border-radius: 8px; overflow: hidden; text-decoration: none; color: #fff; transition: 0.3s; border: 1px solid #222; position: relative; }
-    .movie-card:hover { transform: translateY(-5px); border-color: var(--primary); }
-    .movie-card img { width: 100%; object-fit: cover; }
+    .movie-card:hover { transform: translateY(-3px); border-color: var(--primary); }
     
-    /* Movie Badge Badge Style */
+    /* Landscape Thumbnails (16:9 ratio) */
+    .movie-card img { 
+        width: 100%; 
+        aspect-ratio: 16 / 9; 
+        object-fit: cover; 
+        display: block;
+    }
+    
     .movie-badge { position: absolute; top: 10px; left: 10px; background: var(--primary); color: white; padding: 2px 8px; border-radius: 4px; font-size: 11px; font-weight: bold; z-index: 2; box-shadow: 0 0 5px rgba(0,0,0,0.5); }
 
-    .movie-info { padding: 10px; text-align: center; font-size: 14px; }
+    .movie-info { padding: 10px; text-align: left; font-size: 14px; }
+    .movie-info strong { display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin-bottom: 5px; }
 
-    /* Slider */
+    /* Slider Landscape */
     .slider { display: flex; overflow-x: auto; scroll-snap-type: x mandatory; gap: 10px; padding: 10px 0; scrollbar-width: none; }
     .slider::-webkit-scrollbar { display: none; }
-    .slide-item { flex: 0 0 85%; scroll-snap-align: start; position: relative; border-radius: 15px; overflow: hidden; height: 280px; }
-    .slide-item img { width: 100%; height: 100%; object-fit: cover; filter: brightness(0.6); }
+    .slide-item { flex: 0 0 85%; scroll-snap-align: start; position: relative; border-radius: 12px; overflow: hidden; aspect-ratio: 16 / 9; }
+    .slide-item img { width: 100%; height: 100%; object-fit: cover; filter: brightness(0.7); }
 
     /* Admin UI */
     .admin-section { display: none; padding: 20px; }
@@ -107,13 +121,16 @@ BASE_CSS = """
     
     #html-preview { background: #000; border: 1px dashed #555; padding: 10px; margin-top: 10px; min-height: 100px; border-radius: 5px; }
 
-    @media (max-width: 600px) { .movie-grid { grid-template-columns: repeat(2, 1fr); } .slide-item { flex: 0 0 95%; } }
+    @media (max-width: 600px) { 
+        .movie-grid { grid-template-columns: repeat(1, 1fr); } 
+        .slide-item { flex: 0 0 100%; } 
+        .movie-card img { aspect-ratio: 16 / 9; }
+    }
 </style>
 """
 
-# --- SIDEBAR COMPONENT ---
+# --- SIDEBAR COMPONENT (Trigger Removed) ---
 SIDEBAR_HTML = """
-<div class="menu-trigger" onclick="toggleSidebar()">☰</div>
 <div class="overlay" id="overlay" onclick="toggleSidebar()"></div>
 <div class="sidebar" id="sidebar">
     <div class="sidebar-header">MENU</div>
@@ -145,13 +162,14 @@ SIDEBAR_HTML = """
 </script>
 """
 
-# --- USER TEMPLATES ---
+# --- USER TEMPLATES (Meta tag updated for No Zoom) ---
 
 HOME_HTML = """
 <!DOCTYPE html>
 <html>
 <head>
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>{{ settings.site_name }}</title>
     """ + BASE_CSS + """
 </head>
@@ -167,6 +185,9 @@ HOME_HTML = """
             {% if settings.logo_url %}<img src="{{settings.logo_url}}" width="40" style="margin-right:10px;">{% endif %}
             {{ settings.site_name }}
         </a>
+        <div style="text-align:center; color:#555; font-size:10px;">
+            <span onclick="toggleSidebar()" style="cursor:pointer;">Categories</span>
+        </div>
     </header>
 
     <div class="container">
@@ -190,7 +211,7 @@ HOME_HTML = """
         <div class="ads">{{ settings.ad_banner | safe }}</div>
 
         {% for cat in categories %}
-        <div class="cat-section">
+        <div class="cat-section" style="margin-top:30px;">
             <div style="display:flex; justify-content:space-between; border-left:4px solid red; padding-left:10px; margin-bottom:15px;">
                 <h3 style="margin:0;">{{ cat }}</h3>
                 <a href="/category/{{cat}}" style="color:red; text-decoration:none; font-weight:bold;">SEE ALL →</a>
@@ -199,8 +220,8 @@ HOME_HTML = """
                 {% for movie in movie_data[cat] %}
                 <a href="/movie/{{ movie._id }}" class="movie-card">
                     {% if movie.badge %}<div class="movie-badge">{{ movie.badge }}</div>{% endif %}
-                    <img src="{{ movie.thumb }}" style="width:{{settings.thumb_width}}px; height:{{settings.thumb_height}}px; padding:{{settings.thumb_margin}}px">
-                    <div class="movie-info"><strong>{{ movie.name }}</strong><br><span style="color:#888;">{{ movie.lang }}</span></div>
+                    <img src="{{ movie.thumb }}" style="padding:{{settings.thumb_margin}}px">
+                    <div class="movie-info"><strong>{{ movie.name }}</strong><span style="color:#888; font-size:12px;">{{ movie.lang }}</span></div>
                 </a>
                 {% endfor %}
             </div>
@@ -218,7 +239,8 @@ DETAIL_HTML = """
 <!DOCTYPE html>
 <html>
 <head>
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>{{ movie.name }}</title>
     """ + BASE_CSS + """
 </head>
@@ -229,12 +251,11 @@ DETAIL_HTML = """
         <h1>{{ movie.name }}</h1>
         <div class="ads">{{ settings.ad_banner | safe }}</div>
         
-        <!-- মুভি থাম্বনেল প্রদর্শন -->
         <div style="margin-bottom:20px;">
-            <img src="{{ movie.thumb }}" style="max-width:100%; height:auto; border-radius:10px; border:1px solid #333; max-height:450px; object-fit:cover;">
+            <img src="{{ movie.thumb }}" style="max-width:100%; width:800px; aspect-ratio:16/9; border-radius:10px; border:1px solid #333; object-fit:cover;">
         </div>
 
-        <div style="background:#000; padding:15px; border-radius:10px; margin:20px 0; border:1px solid #333;">
+        <div style="background:#000; padding:15px; border-radius:10px; margin:20px 0; border:1px solid #333; overflow-x:auto;">
             {{ movie.html_code | safe }}
         </div>
         
@@ -251,46 +272,40 @@ ADMIN_HTML = """
 <!DOCTYPE html>
 <html>
 <head>
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Admin Panel</title>
     """ + BASE_CSS + """
 </head>
 <body style="background:#000;">
+    <div style="padding:10px; text-align:center;"><button onclick="toggleSidebar()" class="btn" style="width:auto;">OPEN ADMIN MENU</button></div>
     """ + SIDEBAR_HTML + """
-    <div class="container" style="padding-top:80px;">
+    <div class="container" style="padding-top:20px;">
         <h1 style="text-align:center; color:red; text-shadow:0 0 10px red;">ADMIN DASHBOARD</h1>
         
-        <!-- Add/Edit Movie -->
         <div id="add_movie" class="admin-section active">
             <div class="input-group">
                 <h3>{% if edit_movie %}Edit Movie{% else %}Add New Movie{% endif %}</h3>
                 <form action="/admin/save-movie" method="POST" enctype="multipart/form-data">
                     <input type="hidden" name="movie_id" value="{{ edit_movie._id if edit_movie else '' }}">
                     <input type="text" name="name" value="{{ edit_movie.name if edit_movie else '' }}" placeholder="Movie Name" required>
-                    
                     <input type="text" name="badge" value="{{ edit_movie.badge if edit_movie else '' }}" placeholder="Movie Badge (e.g. HD, 4K, Dual Audio)">
-
                     <label>Thumbnail System:</label>
                     <input type="text" name="thumb_url" value="{{ edit_movie.thumb if edit_movie else '' }}" placeholder="Image URL">
                     <p style="text-align:center; margin:5px;">OR Upload from Gallery</p>
                     <input type="file" name="thumb_file">
-
                     <select name="cat">
                         <option value="">Select Category</option>
                         {% for c in all_categories %}<option value="{{c.name}}" {% if edit_movie and edit_movie.cat == c.name %}selected{% endif %}>{{c.name}}</option>{% endfor %}
                     </select>
                     <input type="text" name="lang" value="{{ edit_movie.lang if edit_movie else '' }}" placeholder="Language (e.g. Hindi)">
-                    
-                    <label>Player HTML Code (Live Preview Below):</label>
+                    <label>Player HTML Code:</label>
                     <textarea name="html_code" id="hcode" rows="6" oninput="document.getElementById('html-preview').innerHTML = this.value" placeholder="Paste Embed Code">{{ edit_movie.html_code if edit_movie else '' }}</textarea>
                     <div id="html-preview">Preview will appear here...</div>
-                    
                     <button type="submit" class="btn" style="margin-top:15px;">Save & Post Movie</button>
                 </form>
             </div>
         </div>
 
-        <!-- Movie List -->
         <div id="movie_list" class="admin-section">
             <div class="input-group">
                 <h3>Manage Movies</h3>
@@ -309,7 +324,6 @@ ADMIN_HTML = """
             </div>
         </div>
 
-        <!-- Category Manage -->
         <div id="cat_manage" class="admin-section">
             <div class="input-group">
                 <h3>Manage Categories</h3>
@@ -325,7 +339,6 @@ ADMIN_HTML = """
             </div>
         </div>
 
-        <!-- Site Settings -->
         <div id="site_settings" class="admin-section">
             <form action="/admin/settings" method="POST" class="input-group">
                 <h3>General Settings</h3>
@@ -334,14 +347,12 @@ ADMIN_HTML = """
                 Notice Text: <input type="text" name="notice_text" value="{{ settings.notice_text }}">
                 Notice BG: <input type="color" name="notice_bg" value="{{ settings.notice_bg }}" style="height:40px;">
                 Notice Color: <input type="color" name="notice_color" value="{{ settings.notice_color }}" style="height:40px;">
-                Thumb Width: <input type="number" name="thumb_width" value="{{ settings.thumb_width }}">
-                Thumb Height: <input type="number" name="thumb_height" value="{{ settings.thumb_height }}">
+                Thumb Margin (px): <input type="number" name="thumb_margin" value="{{ settings.thumb_margin }}">
                 Post Limit: <input type="number" name="post_limit" value="{{ settings.post_limit }}">
                 <button type="submit" class="btn">Update Site</button>
             </form>
         </div>
 
-        <!-- Ads -->
         <div id="ad_settings" class="admin-section">
             <form action="/admin/settings" method="POST" class="input-group">
                 <h3>Ad Codes</h3>
@@ -352,7 +363,6 @@ ADMIN_HTML = """
             </form>
         </div>
 
-        <!-- Telegram -->
         <div id="tg_settings" class="admin-section">
             <form action="/admin/settings" method="POST" class="input-group">
                 <h3>Telegram Bot</h3>
@@ -362,7 +372,6 @@ ADMIN_HTML = """
             </form>
         </div>
 
-        <!-- Security -->
         <div id="security" class="admin-section">
             <form action="/admin/update-auth" method="POST" class="input-group">
                 <h3>Admin Security</h3>
@@ -436,11 +445,9 @@ def admin():
     all_cats = list(cat_col.find().sort("name", 1))
     edit_id = request.args.get('edit_id')
     edit_movie = movies_col.find_one({"_id": ObjectId(edit_id)}) if edit_id else None
-    
     search = request.args.get('search')
     query = {"name": {"$regex": search, "$options": "i"}} if search else {}
     movies_list = list(movies_col.find(query).sort("_id", -1))
-    
     return render_template_string(ADMIN_HTML, settings=settings, all_categories=all_cats, movies=movies_list, edit_movie=edit_movie)
 
 @app.route('/admin/save-movie', methods=['POST'])
@@ -448,24 +455,20 @@ def save_movie():
     if not session.get('admin'): return redirect('/login')
     settings = get_settings()
     movie_id = request.form.get('movie_id')
-    
-    # Thumbnail logic
     thumb = request.form.get('thumb_url')
     if 'thumb_file' in request.files:
         file = request.files['thumb_file']
         if file.filename != '':
             encoded_string = base64.b64encode(file.read()).decode('utf-8')
             thumb = f"data:{file.content_type};base64,{encoded_string}"
-        
     data = {
         "name": request.form['name'], 
         "thumb": thumb,
-        "badge": request.form.get('badge', ''), # ব্যাজ সেভ করা হচ্ছে
+        "badge": request.form.get('badge', ''),
         "lang": request.form['lang'], 
         "cat": request.form['cat'], 
         "html_code": request.form['html_code']
     }
-    
     if movie_id:
         movies_col.update_one({"_id": ObjectId(movie_id)}, {"$set": data})
     else:
@@ -475,7 +478,6 @@ def save_movie():
             msg = f"🎬 *New Movie Posted!*\n\n⭐ *Name:* {data['name']}\n🌍 *Lang:* {data['lang']}\n📂 *Cat:* {data['cat']}\n🔗 [Watch Now]({url})"
             requests.post(f"https://api.telegram.org/bot{settings['tg_token']}/sendPhoto", 
                           data={"chat_id": settings['tg_chat_id'], "photo": data['thumb'], "caption": msg, "parse_mode": "Markdown"})
-
     return redirect('/admin')
 
 @app.route('/admin/add-cat', methods=['POST'])
@@ -503,7 +505,6 @@ def update_auth():
         "admin_user": request.form['admin_user'],
         "admin_pass": request.form['admin_pass']
     }})
-    flash("Security Updated!")
     return redirect('/admin')
 
 @app.route('/delete/<id>')
