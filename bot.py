@@ -59,7 +59,6 @@ BASE_CSS = """
     @import url('https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600&display=swap');
     :root { --primary: #e50914; --dark: #080808; --card: #121212; --text: #ffffff; --sidebar: #111; }
     
-    /* Disable Zoom & Setup Body */
     body { 
         background: var(--dark); 
         color: var(--text); 
@@ -67,7 +66,7 @@ BASE_CSS = """
         margin: 0; 
         padding: 0; 
         overflow-x: hidden; 
-        touch-action: pan-y; /* Prevent double-tap zoom */
+        touch-action: pan-y;
     }
     
     @keyframes rainbow { 0%{color:#ff0000} 15%{color:#ff8800} 30%{color:#ffff00} 45%{color:#00ff00} 60%{color:#00ffff} 75%{color:#0000ff} 90%{color:#8800ff} 100%{color:#ff0000} }
@@ -76,7 +75,6 @@ BASE_CSS = """
     .notice-bar { padding: 10px; text-align: center; font-size: 14px; font-weight: bold; }
     .container { width: 95%; max-width: 1400px; margin: auto; }
 
-    /* Sidebar Navigation */
     .sidebar { position: fixed; left: -280px; top: 0; height: 100%; width: 280px; background: var(--sidebar); transition: 0.3s; z-index: 1001; border-right: 1px solid #333; }
     .sidebar.active { left: 0; }
     .sidebar-header { padding: 20px; border-bottom: 1px solid #333; font-weight: bold; color: var(--primary); font-size: 20px; text-align: center; }
@@ -86,12 +84,10 @@ BASE_CSS = """
     .overlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.8); z-index: 1000; }
     .overlay.active { display: block; }
     
-    /* Movie Grid */
     .movie-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 15px; }
     .movie-card { background: var(--card); border-radius: 8px; overflow: hidden; text-decoration: none; color: #fff; transition: 0.3s; border: 1px solid #222; position: relative; }
     .movie-card:hover { transform: translateY(-3px); border-color: var(--primary); }
     
-    /* Landscape Thumbnails */
     .movie-card img { 
         width: 100%; 
         aspect-ratio: 16 / 9; 
@@ -104,19 +100,18 @@ BASE_CSS = """
     .movie-info { padding: 10px; text-align: left; font-size: 14px; }
     .movie-info strong { display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin-bottom: 5px; }
 
-    /* Slider Landscape */
     .slider { display: flex; overflow-x: auto; scroll-snap-type: x mandatory; gap: 10px; padding: 10px 0; scrollbar-width: none; scroll-behavior: smooth; }
     .slider::-webkit-scrollbar { display: none; }
     .slide-item { flex: 0 0 85%; scroll-snap-align: start; position: relative; border-radius: 12px; overflow: hidden; aspect-ratio: 16 / 9; }
     .slide-item img { width: 100%; height: 100%; object-fit: cover; filter: brightness(0.7); }
 
-    /* --- Custom UI for Steps --- */
-    .step-box { border: 4px solid #28a745; background: #000; border-radius: 5px; min-height: 80px; margin: 20px 0; }
-    .unlock-btn { background: #ff0000; color: #fff; padding: 15px; border-radius: 10px; display: block; text-decoration: none; font-weight: bold; font-size: 20px; box-shadow: 0 0 15px rgba(255,0,0,0.3); margin-top: 15px; }
-    .tg-buttons { display: flex; justify-content: center; gap: 20px; margin-top: 20px; }
-    .tg-btn { background: #0088cc; color: white; padding: 10px 20px; border-radius: 30px; text-decoration: none; display: flex; align-items: center; gap: 10px; }
-    
-    /* Admin UI */
+    /* Green box for movie meta */
+    .meta-box { border: 4px solid #2ecc71; background: transparent; border-radius: 5px; padding: 15px; margin: 15px auto; width: 90%; max-width: 600px; text-align: center; color: #fff; font-weight: 500; font-size: 14px; }
+    .step-btn { background: #ff0000; color: #fff; border: none; padding: 15px; width: 90%; max-width: 600px; border-radius: 10px; font-weight: bold; font-size: 18px; cursor: pointer; display: block; margin: 10px auto; text-decoration: none; }
+    .step-text { color: #f1c40f; font-size: 14px; font-weight: bold; margin: 10px 0; }
+    .tg-channel-btns { display: flex; justify-content: center; gap: 15px; margin-top: 20px; }
+    .tg-chan { background: #0088cc; color: white; padding: 10px 15px; border-radius: 50px; text-decoration: none; font-size: 12px; display: flex; align-items: center; gap: 5px; font-weight: bold;}
+
     .admin-section { display: none; padding: 20px; }
     .admin-section.active { display: block; }
     .input-group { background: #1a1a1a; padding: 20px; border-radius: 10px; margin-bottom: 20px; border: 1px solid #333; }
@@ -132,7 +127,6 @@ BASE_CSS = """
 </style>
 """
 
-# --- SIDEBAR COMPONENT ---
 SIDEBAR_HTML = """
 <div class="overlay" id="overlay" onclick="toggleSidebar()"></div>
 <div class="sidebar" id="sidebar">
@@ -164,8 +158,6 @@ SIDEBAR_HTML = """
     }
 </script>
 """
-
-# --- USER TEMPLATES ---
 
 HOME_HTML = """
 <!DOCTYPE html>
@@ -199,7 +191,7 @@ HOME_HTML = """
         </form>
 
         {% if slider_movies and not is_cat %}
-        <div class="slider" id="autoSlider">
+        <div class="slider" id="homeSlider">
             {% for sm in slider_movies %}
             <div class="slide-item">
                 <a href="/movie/{{sm._id}}">
@@ -210,17 +202,14 @@ HOME_HTML = """
             {% endfor %}
         </div>
         <script>
-            const slider = document.getElementById('autoSlider');
-            if (slider) {
-                let scrollAmount = 0;
-                setInterval(() => {
-                    if (slider.scrollLeft + slider.offsetWidth >= slider.scrollWidth) {
-                        slider.scrollLeft = 0;
-                    } else {
-                        slider.scrollLeft += slider.offsetWidth + 10;
-                    }
-                }, 3000);
-            }
+            let slider = document.getElementById('homeSlider');
+            setInterval(() => {
+                if (slider.scrollLeft + slider.offsetWidth >= slider.scrollWidth) {
+                    slider.scrollLeft = 0;
+                } else {
+                    slider.scrollLeft += slider.offsetWidth;
+                }
+            }, 3000);
         </script>
         {% endif %}
 
@@ -246,7 +235,6 @@ HOME_HTML = """
         
         <div class="ads">{{ settings.ad_social | safe }}</div>
     </div>
-    {{ settings.ad_popunder | safe }}
 </body>
 </html>
 """
@@ -264,31 +252,32 @@ DETAIL_HTML = """
     """ + SIDEBAR_HTML + """
     <header class="container"><a href="/" class="logo">{{ settings.site_name }}</a></header>
     <div class="container" style="text-align:center; padding-top:20px;">
-        <h2 style="margin:10px 0;">{{ movie.name }}</h2>
-        
+        <h2 style="margin-bottom:15px;">{{ movie.name }}</h2>
         <div class="ads">{{ settings.ad_banner | safe }}</div>
         
         <div style="margin-bottom:20px;">
             <img src="{{ movie.thumb }}" style="max-width:100%; width:800px; aspect-ratio:16/9; border-radius:10px; border:1px solid #333; object-fit:cover;">
         </div>
 
-        <!-- Green Box & Unlock Steps UI -->
-        <div class="step-box"></div>
-        <p style="color:#f1c40f; font-weight:bold; margin-top:10px;">Click the button below to start (4 Steps)</p>
-        <a href="#" class="unlock-btn">UNLOCK STEP 01</a>
+        <!-- Green Box Meta Data Section -->
+        <div class="meta-box">
+            Category: {{ movie.cat }} | Language: {{ movie.lang }} | Quality: {{ movie.badge if movie.badge else '720p' }}
+        </div>
 
-        <!-- Player HTML Code hidden under steps if needed, else displayed here -->
+        <p class="step-text">Click the button below to start (4 Steps)</p>
+        <a href="#" class="step-btn">UNLOCK STEP 01</a>
+
+        <div class="tg-channel-btns">
+            <a href="#" class="tg-chan"><img src="https://upload.wikimedia.org/wikipedia/commons/thumb/8/82/Telegram_logo.svg/2048px-Telegram_logo.svg.png" width="20"> CHANNEL 01</a>
+            <a href="#" class="tg-chan"><img src="https://upload.wikimedia.org/wikipedia/commons/thumb/8/82/Telegram_logo.svg/2048px-Telegram_logo.svg.png" width="20"> CHANNEL 02</a>
+        </div>
+
         <div style="background:#000; padding:15px; border-radius:10px; margin:20px 0; border:1px solid #333; overflow-x:auto;">
             {{ movie.html_code | safe }}
         </div>
-
-        <div class="tg-buttons">
-            <a href="#" class="tg-btn"><img src="https://upload.wikimedia.org/wikipedia/commons/thumb/8/82/Telegram_logo.svg/512px-Telegram_logo.svg.png" width="20"> CHANNEL 01</a>
-            <a href="#" class="tg-btn"><img src="https://upload.wikimedia.org/wikipedia/commons/thumb/8/82/Telegram_logo.svg/512px-Telegram_logo.svg.png" width="20"> CHANNEL 02</a>
-        </div>
         
-        <div style="background:#111; padding:10px; border-radius:5px; margin-top:20px; font-size:13px;">
-            Category: {{ movie.cat }} | Language: {{ movie.lang }} | Quality: {{ movie.badge if movie.badge else 'HD 720p' }}
+        <div style="padding:10px; font-size:12px; border: 1px solid #222; margin-top:20px;">
+            Category: {{ movie.cat }} | Language: {{ movie.lang }} | Quality: {{ movie.badge if movie.badge else 'Hindi 720p' }}
         </div>
 
         <div class="ads">{{ settings.ad_social | safe }}</div>
@@ -296,8 +285,6 @@ DETAIL_HTML = """
 </body>
 </html>
 """
-
-# --- ADMIN TEMPLATE ---
 
 ADMIN_HTML = """
 <!DOCTYPE html>
@@ -505,18 +492,17 @@ def save_movie():
     else:
         new_mov = movies_col.insert_one(data)
         if settings['tg_token'] and settings['tg_chat_id']:
-            try:
-                url = request.host_url + "movie/" + str(new_mov.inserted_id)
-                msg = f"🎬 <b>New Movie Posted!</b>\n\n⭐ <b>Name:</b> {data['name']}\n🌍 <b>Lang:</b> {data['lang']}\n📂 <b>Cat:</b> {data['cat']}\n🔗 <a href='{url}'>Watch Now</a>"
-                # If thumb is base64, send as simple text, if it's URL, send as Photo
-                if "data:image" in data['thumb']:
-                     requests.post(f"https://api.telegram.org/bot{settings['tg_token']}/sendMessage", 
-                                  data={"chat_id": settings['tg_chat_id'], "text": msg, "parse_mode": "HTML"})
-                else:
-                    requests.post(f"https://api.telegram.org/bot{settings['tg_token']}/sendPhoto", 
-                                  data={"chat_id": settings['tg_chat_id'], "photo": data['thumb'], "caption": msg, "parse_mode": "HTML"})
-            except:
-                pass
+            url = request.host_url + "movie/" + str(new_mov.inserted_id)
+            msg = f"🎬 <b>New Movie Posted!</b>\n\n⭐ <b>Name:</b> {data['name']}\n🌍 <b>Lang:</b> {data['lang']}\n📂 <b>Cat:</b> {data['cat']}\n🔗 <a href='{url}'>Watch Now</a>"
+            
+            # If thumb is a direct URL, send as photo, else send as simple message
+            if data['thumb'].startswith('http'):
+                requests.post(f"https://api.telegram.org/bot{settings['tg_token']}/sendPhoto", 
+                              data={"chat_id": settings['tg_chat_id'], "photo": data['thumb'], "caption": msg, "parse_mode": "HTML"})
+            else:
+                requests.post(f"https://api.telegram.org/bot{settings['tg_token']}/sendMessage", 
+                              data={"chat_id": settings['tg_chat_id'], "text": msg, "parse_mode": "HTML"})
+
     return redirect('/admin')
 
 @app.route('/admin/add-cat', methods=['POST'])
