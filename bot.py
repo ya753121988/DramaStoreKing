@@ -105,12 +105,8 @@ BASE_CSS = """
     .slide-item { flex: 0 0 85%; scroll-snap-align: start; position: relative; border-radius: 12px; overflow: hidden; aspect-ratio: 16 / 9; }
     .slide-item img { width: 100%; height: 100%; object-fit: cover; filter: brightness(0.7); }
 
-    /* Green box for movie meta */
-    .meta-box { border: 4px solid #2ecc71; background: transparent; border-radius: 5px; padding: 15px; margin: 15px auto; width: 90%; max-width: 600px; text-align: center; color: #fff; font-weight: 500; font-size: 14px; }
-    .step-btn { background: #ff0000; color: #fff; border: none; padding: 15px; width: 90%; max-width: 600px; border-radius: 10px; font-weight: bold; font-size: 18px; cursor: pointer; display: block; margin: 10px auto; text-decoration: none; }
-    .step-text { color: #f1c40f; font-size: 14px; font-weight: bold; margin: 10px 0; }
-    .tg-channel-btns { display: flex; justify-content: center; gap: 15px; margin-top: 20px; }
-    .tg-chan { background: #0088cc; color: white; padding: 10px 15px; border-radius: 50px; text-decoration: none; font-size: 12px; display: flex; align-items: center; gap: 5px; font-weight: bold;}
+    /* Green box for movie info */
+    .meta-box { border: 2px solid #2ecc71; background: transparent; border-radius: 5px; padding: 10px; margin: 15px auto; width: 95%; max-width: 600px; text-align: center; color: #fff; font-weight: 500; font-size: 13px; }
 
     .admin-section { display: none; padding: 20px; }
     .admin-section.active { display: block; }
@@ -255,21 +251,13 @@ DETAIL_HTML = """
         <h2 style="margin-bottom:15px;">{{ movie.name }}</h2>
         <div class="ads">{{ settings.ad_banner | safe }}</div>
         
-        <div style="margin-bottom:20px;">
+        <div style="margin-bottom:15px;">
             <img src="{{ movie.thumb }}" style="max-width:100%; width:800px; aspect-ratio:16/9; border-radius:10px; border:1px solid #333; object-fit:cover;">
         </div>
 
-        <!-- Green Box Meta Data Section -->
+        <!-- Green Box Movie Info -->
         <div class="meta-box">
             Category: {{ movie.cat }} | Language: {{ movie.lang }} | Quality: {{ movie.badge if movie.badge else '720p' }}
-        </div>
-
-        <p class="step-text">Click the button below to start (4 Steps)</p>
-        <a href="#" class="step-btn">UNLOCK STEP 01</a>
-
-        <div class="tg-channel-btns">
-            <a href="#" class="tg-chan"><img src="https://upload.wikimedia.org/wikipedia/commons/thumb/8/82/Telegram_logo.svg/2048px-Telegram_logo.svg.png" width="20"> CHANNEL 01</a>
-            <a href="#" class="tg-chan"><img src="https://upload.wikimedia.org/wikipedia/commons/thumb/8/82/Telegram_logo.svg/2048px-Telegram_logo.svg.png" width="20"> CHANNEL 02</a>
         </div>
 
         <div style="background:#000; padding:15px; border-radius:10px; margin:20px 0; border:1px solid #333; overflow-x:auto;">
@@ -492,16 +480,17 @@ def save_movie():
     else:
         new_mov = movies_col.insert_one(data)
         if settings['tg_token'] and settings['tg_chat_id']:
-            url = request.host_url + "movie/" + str(new_mov.inserted_id)
-            msg = f"🎬 <b>New Movie Posted!</b>\n\n⭐ <b>Name:</b> {data['name']}\n🌍 <b>Lang:</b> {data['lang']}\n📂 <b>Cat:</b> {data['cat']}\n🔗 <a href='{url}'>Watch Now</a>"
-            
-            # If thumb is a direct URL, send as photo, else send as simple message
-            if data['thumb'].startswith('http'):
-                requests.post(f"https://api.telegram.org/bot{settings['tg_token']}/sendPhoto", 
-                              data={"chat_id": settings['tg_chat_id'], "photo": data['thumb'], "caption": msg, "parse_mode": "HTML"})
-            else:
-                requests.post(f"https://api.telegram.org/bot{settings['tg_token']}/sendMessage", 
-                              data={"chat_id": settings['tg_chat_id'], "text": msg, "parse_mode": "HTML"})
+            try:
+                url = request.host_url + "movie/" + str(new_mov.inserted_id)
+                msg = f"🎬 <b>New Movie Posted!</b>\\n\\n⭐ <b>Name:</b> {data['name']}\\n🌍 <b>Lang:</b> {data['lang']}\\n📂 <b>Cat:</b> {data['cat']}\\n🔗 <a href='{url}'>Watch Now</a>"
+                if data['thumb'].startswith('http'):
+                    requests.post(f"https://api.telegram.org/bot{settings['tg_token']}/sendPhoto", 
+                                  data={"chat_id": settings['tg_chat_id'], "photo": data['thumb'], "caption": msg, "parse_mode": "HTML"})
+                else:
+                    requests.post(f"https://api.telegram.org/bot{settings['tg_token']}/sendMessage", 
+                                  data={"chat_id": settings['tg_chat_id'], "text": msg, "parse_mode": "HTML"})
+            except:
+                pass
 
     return redirect('/admin')
 
