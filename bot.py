@@ -117,6 +117,29 @@ BASE_CSS = """
     
     #html-preview { background: #000; border: 1px dashed #555; padding: 10px; margin-top: 10px; min-height: 100px; border-radius: 5px; }
 
+    /* --- Loading Spinner CSS --- */
+    #page-loader {
+        display: none;
+        position: fixed;
+        top: 0; left: 0;
+        width: 100%; height: 100%;
+        background: rgba(0,0,0,0.8);
+        z-index: 9999;
+        justify-content: center;
+        align-items: center;
+        flex-direction: column;
+    }
+    .spinner {
+        width: 50px;
+        height: 50px;
+        border: 5px solid #333;
+        border-top: 5px solid var(--primary);
+        border-radius: 50%;
+        animation: spin 1s linear infinite;
+    }
+    @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+    /* -------------------------- */
+
     @media (max-width: 600px) { 
         .movie-grid { grid-template-columns: repeat(1, 1fr); } 
         .slide-item { flex: 0 0 100%; } 
@@ -153,6 +176,9 @@ SIDEBAR_HTML = """
         document.getElementById(id).classList.add('active');
         toggleSidebar();
     }
+    function showLoader() {
+        document.getElementById('page-loader').style.display = 'flex';
+    }
 </script>
 """
 
@@ -166,6 +192,8 @@ HOME_HTML = """
     """ + BASE_CSS + """
 </head>
 <body>
+    <div id="page-loader"><div class="spinner"></div><p style="color:white; margin-top:10px;">Loading...</p></div>
+
     <div class="notice-bar" style="background:{{ settings.notice_bg }}; color:{{ settings.notice_color }};">
         <marquee>{{ settings.notice_text }}</marquee>
     </div>
@@ -191,7 +219,7 @@ HOME_HTML = """
         <div class="slider" id="homeSlider">
             {% for sm in slider_movies %}
             <div class="slide-item">
-                <a href="/movie/{{sm._id}}">
+                <a href="/movie/{{sm._id}}" onclick="showLoader()">
                     <img src="{{sm.thumb}}">
                     <div style="position:absolute; bottom:20px; left:20px;"><h2>{{sm.name}}</h2></div>
                 </a>
@@ -216,11 +244,11 @@ HOME_HTML = """
         <div class="cat-section" style="margin-top:30px;">
             <div style="display:flex; justify-content:space-between; border-left:4px solid red; padding-left:10px; margin-bottom:15px;">
                 <h3 style="margin:0;">{{ cat }}</h3>
-                <a href="/category/{{cat}}" style="color:red; text-decoration:none; font-weight:bold;">SEE ALL →</a>
+                <a href="/category/{{cat}}" style="color:red; text-decoration:none; font-weight:bold;" onclick="showLoader()">SEE ALL →</a>
             </div>
             <div class="movie-grid">
                 {% for movie in movie_data[cat] %}
-                <a href="/movie/{{ movie._id }}" class="movie-card">
+                <a href="/movie/{{ movie._id }}" class="movie-card" onclick="showLoader()">
                     {% if movie.badge %}<div class="movie-badge">{{ movie.badge }}</div>{% endif %}
                     <img src="{{ movie.thumb }}" style="padding:{{settings.thumb_margin}}px">
                     <div class="movie-info"><strong>{{ movie.name }}</strong><span style="color:#888; font-size:12px;">{{ movie.lang }}</span></div>
@@ -246,8 +274,10 @@ DETAIL_HTML = """
     """ + BASE_CSS + """
 </head>
 <body>
+    <div id="page-loader"><div class="spinner"></div><p style="color:white; margin-top:10px;">Loading...</p></div>
+
     """ + SIDEBAR_HTML + """
-    <header class="container"><a href="/" class="logo">{{ settings.site_name }}</a></header>
+    <header class="container"><a href="/" class="logo" onclick="showLoader()">{{ settings.site_name }}</a></header>
     <div class="container" style="text-align:center; padding-top:20px;">
         <h2 style="margin-bottom:15px;">{{ movie.name }}</h2>
         <div class="ads">{{ settings.ad_banner | safe }}</div>
